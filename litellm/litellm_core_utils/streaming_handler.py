@@ -797,6 +797,10 @@ class CustomStreamWrapper:
                 "reasoning_content" in model_response.choices[0].delta
                 and model_response.choices[0].delta.reasoning_content is not None
             )
+            or (
+                "reasoning" in model_response.choices[0].delta
+                and model_response.choices[0].delta.reasoning is not None
+            )
             or (model_response.choices[0].delta.provider_specific_fields is not None)
             or (
                 "provider_specific_fields" in model_response
@@ -1040,7 +1044,7 @@ class CustomStreamWrapper:
         """
         UI's Like OpenWebUI expect to get 1 chunk with <think>...</think> tags in the chunk content
 
-        In place updates the model_response object with reasoning_content in content with <think>...</think> tags
+        In place updates the model_response object with reasoning_content/reasoning in content with <think>...</think> tags
 
         Enabled when `merge_reasoning_content_in_choices=True` passed in request params
 
@@ -1049,6 +1053,8 @@ class CustomStreamWrapper:
         if self.merge_reasoning_content_in_choices is True:
             reasoning_content = getattr(
                 model_response.choices[0].delta, "reasoning_content", None
+            ) or getattr(
+                model_response.choices[0].delta, "reasoning", None
             )
             if reasoning_content:
                 if self.sent_first_thinking_block is False:
@@ -1061,8 +1067,12 @@ class CustomStreamWrapper:
                     self.sent_first_thinking_block = True
                 elif (
                     self.sent_first_thinking_block is True
-                    and hasattr(model_response.choices[0].delta, "reasoning_content")
-                    and model_response.choices[0].delta.reasoning_content
+                    and (
+                        (hasattr(model_response.choices[0].delta, "reasoning_content")
+                         and model_response.choices[0].delta.reasoning_content)
+                        or (hasattr(model_response.choices[0].delta, "reasoning")
+                            and model_response.choices[0].delta.reasoning)
+                    )
                 ):
                     model_response.choices[0].delta.content = reasoning_content
             elif (
@@ -1077,6 +1087,8 @@ class CustomStreamWrapper:
 
             if hasattr(model_response.choices[0].delta, "reasoning_content"):
                 del model_response.choices[0].delta.reasoning_content
+            if hasattr(model_response.choices[0].delta, "reasoning"):
+                del model_response.choices[0].delta.reasoning
         return
 
     def chunk_creator(self, chunk: Any):  # type: ignore  # noqa: PLR0915

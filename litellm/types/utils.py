@@ -1088,6 +1088,7 @@ class Message(SafeAttributeModel, OpenAIObject):
     audio: Optional[ChatCompletionAudioResponse] = None
     images: Optional[List[ImageURLListItem]] = None
     reasoning_content: Optional[str] = None
+    reasoning: Optional[str] = None
     thinking_blocks: Optional[
         List[Union[ChatCompletionThinkingBlock, ChatCompletionRedactedThinkingBlock]]
     ] = None
@@ -1104,6 +1105,7 @@ class Message(SafeAttributeModel, OpenAIObject):
         images: Optional[List[ImageURLListItem]] = None,
         provider_specific_fields: Optional[Dict[str, Any]] = None,
         reasoning_content: Optional[str] = None,
+        reasoning: Optional[str] = None,
         thinking_blocks: Optional[
             List[
                 Union[ChatCompletionThinkingBlock, ChatCompletionRedactedThinkingBlock]
@@ -1147,6 +1149,9 @@ class Message(SafeAttributeModel, OpenAIObject):
         if reasoning_content is not None:
             init_values["reasoning_content"] = reasoning_content
 
+        if reasoning is not None:
+            init_values["reasoning"] = reasoning
+
         super(Message, self).__init__(
             **init_values,  # type: ignore
             **params,
@@ -1172,6 +1177,11 @@ class Message(SafeAttributeModel, OpenAIObject):
             # ensure default response matches OpenAI spec
             if hasattr(self, "reasoning_content"):
                 del self.reasoning_content
+
+        if reasoning is None:
+            # ensure default response matches OpenAI spec
+            if hasattr(self, "reasoning"):
+                del self.reasoning
 
         if thinking_blocks is None:
             # ensure default response matches OpenAI spec
@@ -1202,6 +1212,7 @@ class Message(SafeAttributeModel, OpenAIObject):
 
 class Delta(SafeAttributeModel, OpenAIObject):
     reasoning_content: Optional[str] = None
+    reasoning: Optional[str] = None
     thinking_blocks: Optional[
         List[Union[ChatCompletionThinkingBlock, ChatCompletionRedactedThinkingBlock]]
     ] = None
@@ -1216,6 +1227,7 @@ class Delta(SafeAttributeModel, OpenAIObject):
         audio: Optional[ChatCompletionAudioResponse] = None,
         images: Optional[List[ImageURLListItem]] = None,
         reasoning_content: Optional[str] = None,
+        reasoning: Optional[str] = None,
         thinking_blocks: Optional[
             List[
                 Union[ChatCompletionThinkingBlock, ChatCompletionRedactedThinkingBlock]
@@ -1240,6 +1252,12 @@ class Delta(SafeAttributeModel, OpenAIObject):
         else:
             # ensure default response matches OpenAI spec
             del self.reasoning_content
+
+        if reasoning is not None:
+            self.reasoning = reasoning
+        else:
+            # ensure default response matches OpenAI spec
+            del self.reasoning
 
         if thinking_blocks is not None:
             self.thinking_blocks = thinking_blocks
