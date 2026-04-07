@@ -136,6 +136,8 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         # if this indicates reasoning content, don't consider reasoning ended
         if hasattr(delta, "reasoning_content") and delta.reasoning_content:
             return False
+        if hasattr(delta, "reasoning") and delta.reasoning:
+            return False
         if hasattr(delta, "thinking_blocks") and delta.thinking_blocks:
             return False
 
@@ -569,7 +571,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             self._cached_item_id = f"msg_{str(uuid.uuid4())}"
 
         text = getattr(litellm_complete_object.choices[0].message, "content", "") or ""  # type: ignore
-        reasoning_content = getattr(litellm_complete_object.choices[0].message, "reasoning_content", "") or ""  # type: ignore
+        reasoning_content = getattr(litellm_complete_object.choices[0].message, "reasoning_content", "") or getattr(litellm_complete_object.choices[0].message, "reasoning", "") or ""  # type: ignore
         annotations = getattr(litellm_complete_object.choices[0].message, "annotations", None)  # type: ignore
 
         part: Optional[PART_UNION_TYPES] = None
@@ -754,7 +756,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         self.sent_output_item_added_event = True
 
         # Reasoning-first
-        if hasattr(delta, "reasoning_content") and delta.reasoning_content:
+        if (hasattr(delta, "reasoning_content") and delta.reasoning_content) or (hasattr(delta, "reasoning") and delta.reasoning):
             self._reasoning_active = True
             if self._cached_reasoning_item_id is None:
                 self._cached_reasoning_item_id = f"rs_{uuid.uuid4()}"
@@ -838,6 +840,8 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                             delta = chunk.choices[0].delta if chunk.choices else None
                             if delta and hasattr(delta, "reasoning_content") and delta.reasoning_content:
                                 self._accumulated_reasoning_content_parts.append(delta.reasoning_content)
+                            elif delta and hasattr(delta, "reasoning") and delta.reasoning:
+                                self._accumulated_reasoning_content_parts.append(delta.reasoning)
                             if self._is_reasoning_end(chunk):
                                 reasoning_content = "".join(self._accumulated_reasoning_content_parts)
                                 
@@ -981,12 +985,11 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                         )
                         self._pending_annotation_events.append(event)        
         # Priority 1: Handle reasoning content (highest priority)
-        if (
-            chunk.choices
-            and hasattr(chunk.choices[0].delta, "reasoning_content")
-            and chunk.choices[0].delta.reasoning_content
-        ):
-            reasoning_content = chunk.choices[0].delta.reasoning_content
+        reasoning_content = None
+        if chunk.choices:
+            delta = chunk.choices[0].delta
+            reasoning_content = getattr(delta, "reasoning_content", None) or getattr(delta, "reasoning", None)
+        if reasoning_content:
 
             return ReasoningSummaryTextDeltaEvent(
                 type=ResponsesAPIStreamEvents.REASONING_SUMMARY_TEXT_DELTA,

@@ -1634,12 +1634,13 @@ class LiteLLMCompletionResponsesConfig:
         for choice in choices:
             if hasattr(choice, "message") and choice.message:
                 message = choice.message
-                if hasattr(message, "reasoning_content") and message.reasoning_content:
+                if (hasattr(message, "reasoning_content") and message.reasoning_content) or (hasattr(message, "reasoning") and message.reasoning):
+                    reasoning_text = getattr(message, "reasoning_content", None) or getattr(message, "reasoning", None)
                     # Only check the first choice for reasoning content
                     return [
                         GenericResponseOutputItem(
                             type="reasoning",
-                            id=f"rs_{hash(str(message.reasoning_content))}",
+                            id=f"rs_{hash(str(reasoning_text))}",
                             status=LiteLLMCompletionResponsesConfig._map_chat_completion_finish_reason_to_responses_status(
                                 choice.finish_reason
                             ),
@@ -1647,7 +1648,7 @@ class LiteLLMCompletionResponsesConfig:
                             content=[
                                 OutputText(
                                     type="output_text",
-                                    text=message.reasoning_content,
+                                    text=reasoning_text,
                                     annotations=[],
                                 )
                             ],

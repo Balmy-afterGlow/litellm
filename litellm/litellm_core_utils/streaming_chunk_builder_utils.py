@@ -397,7 +397,11 @@ class ChunkProcessor:
     def get_combined_reasoning_content(
         self, chunks: List[Dict[str, Any]]
     ) -> ChatCompletionAssistantContentValue:
-        return self.get_combined_content(chunks, delta_key="reasoning_content")
+        """Combine reasoning content from chunks, supporting both 'reasoning_content' and 'reasoning' delta keys."""
+        combined = self.get_combined_content(chunks, delta_key="reasoning_content")
+        if not combined:
+            combined = self.get_combined_content(chunks, delta_key="reasoning")
+        return combined
 
     def get_combined_audio_content(
         self, chunks: List[Dict[str, Any]]
@@ -479,12 +483,11 @@ class ChunkProcessor:
     def count_reasoning_tokens(self, response: ModelResponse) -> int:
         reasoning_tokens = 0
         for choice in response.choices:
-            if (
-                hasattr(cast(Choices, choice).message, "reasoning_content")
-                and cast(Choices, choice).message.reasoning_content is not None
-            ):
+            message = cast(Choices, choice).message
+            reasoning_text = getattr(message, "reasoning_content", None) or getattr(message, "reasoning", None)
+            if reasoning_text is not None:
                 reasoning_tokens += token_counter(
-                    text=cast(Choices, choice).message.reasoning_content,
+                    text=reasoning_text,
                     count_response_tokens=True,
                 )
 

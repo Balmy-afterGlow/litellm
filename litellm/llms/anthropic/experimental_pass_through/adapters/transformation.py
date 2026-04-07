@@ -1011,13 +1011,14 @@ class LiteLLMAnthropicMessagesAdapter:
                         )
             # Handle reasoning_content when thinking_blocks is not present
             elif (
-                hasattr(choice.message, "reasoning_content")
-                and choice.message.reasoning_content
+                (hasattr(choice.message, "reasoning_content") and choice.message.reasoning_content)
+                or (hasattr(choice.message, "reasoning") and choice.message.reasoning)
             ):
+                reasoning_text = getattr(choice.message, "reasoning_content", None) or getattr(choice.message, "reasoning", None)
                 new_content.append(
                     AnthropicResponseContentBlockThinking(
                         type="thinking",
-                        thinking=str(choice.message.reasoning_content),
+                        thinking=str(reasoning_text),
                         signature=None,
                     ).model_dump()
                 )
@@ -1224,11 +1225,12 @@ class LiteLLMAnthropicMessagesAdapter:
                             reasoning_signature += signature
             # Handle reasoning_content when thinking_blocks is not present
             # This handles providers like OpenRouter that return reasoning_content
-            elif isinstance(choice, StreamingChoices) and hasattr(
-                choice.delta, "reasoning_content"
+            elif isinstance(choice, StreamingChoices) and (
+                hasattr(choice.delta, "reasoning_content") or hasattr(choice.delta, "reasoning")
             ):
-                if choice.delta.reasoning_content is not None:
-                    reasoning_content += choice.delta.reasoning_content
+                rc = getattr(choice.delta, "reasoning_content", None) or getattr(choice.delta, "reasoning", None)
+                if rc is not None:
+                    reasoning_content += rc
 
         if reasoning_content and reasoning_signature:
             raise ValueError(
